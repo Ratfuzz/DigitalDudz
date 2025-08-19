@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DigitalDudz</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #videoWrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        video {
+            transform-origin: center center;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            touch-action: none;
+        }
+
+        audio {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="videoWrapper">
+        <video id="videoElement" autoplay muted loop>
+            <source type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+    <audio id="audioElement" src="media/brains.mp3" preload="auto" loop></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoElement = document.getElementById('videoElement');
+            const videoWrapper = document.getElementById('videoWrapper');
+            const audioElement = document.getElementById('audioElement');
+            let tapCount = 0;
+            let tapTimer;
+            let lastTouchDistance = null;
+            let scale = 1;
+            let startY = null;
+
+            const swipeThreshold = 50; // px for swipe detection
+
+            const videoSources = [
+                'media/1.mp4',
+                'media/2.mp4',
+                'media/3.mp4',
+                'media/4.mp4',
+                'media/5.mp4',
+                'media/6.mp4',
+                'media/7.mp4'
+            ];
+
+            function changeVideo() {
+                const currentSource = videoElement.getAttribute('src');
+                let newSourceIndex = videoSources.indexOf(currentSource) + 1;
+                if (newSourceIndex >= videoSources.length) newSourceIndex = 0;
+
+                videoElement.setAttribute('src', videoSources[newSourceIndex]);
+                videoElement.load();
+
+                if (newSourceIndex === videoSources.length - 1) {
+                    videoElement.muted = false;
+                    audioElement.play();
+                } else {
+                    videoElement.muted = false;
+                    audioElement.pause();
+                }
+            }
+
+            // Touch start
+            videoWrapper.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 2) {
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    lastTouchDistance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+                }
+                if (e.touches.length === 1) {
+                    startY = e.touches[0].clientY;
+                }
+            });
+
+            // Pinch to zoom
+            videoWrapper.addEventListener('touchmove', (e) => {
+                if (e.touches.length === 2) {
+                    e.preventDefault();
+                    const touch1 = e.touches[0];
+                    const touch2 = e.touches[1];
+                    const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
+
+                    if (lastTouchDistance) {
+                        const delta = distance / lastTouchDistance;
+                        scale *= delta;
+                        scale = Math.min(Math.max(scale, 1), 5);
+                        videoElement.style.transform = `scale(${scale})`;
+                    }
+                    lastTouchDistance = distance;
+                }
+            });
+
+            // Touch end
+            videoWrapper.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) lastTouchDistance = null;
+
+                // Single-finger gestures
+                if (e.changedTouches.length === 1 && e.touches.length === 0) {
+                    const touch = e.changedTouches[0];
+
+                    // Swipe up for fullscreen
+                    if (startY !== null && startY - touch.clientY > swipeThreshold) {
+                        if (videoElement.requestFullscreen) videoElement.requestFullscreen();
+                        else if (videoElement.webkitRequestFullscreen) videoElement.webkitRequestFullscreen();
+                        else if (videoElement.msRequestFullscreen) videoElement.msRequestFullscreen();
+                        startY = null;
+                        return; // don't count as tap if swipe triggered
+                    }
+
+                    // Double-tap for video change
+                    tapCount++;
+                    if (tapCount === 1) {
+                        tapTimer = setTimeout(() => tapCount = 0, 400);
+                    } else if (tapCount === 2) {
+                        clearTimeout(tapTimer);
+                        tapCount = 0;
+                        changeVideo();
+                    }
+                    startY = null;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
