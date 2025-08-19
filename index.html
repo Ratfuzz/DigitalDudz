@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DigitalDudz</title>
+
+    <!-- Web app support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DigitalDudz">
+    <link rel="apple-touch-icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTZyGNKirHg4dmmE49LcHPERMsyCMHJsIkRvQ&s">
+
     <style>
         html, body {
             margin: 0;
@@ -33,120 +40,168 @@
             touch-action: none;
         }
 
-        audio {
-            display: none;
+        audio { display: none; }
+
+        /* Add to home screen popup */
+        #a2hsPopup {
+            position: fixed;
+            top: 100px;
+            left: 20px;
+            width: 220px;
+            padding: 12px;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 14px;
+            border-radius: 10px;
+            z-index: 9999;
+            touch-action: none;
+        }
+
+        #a2hsPopup button {
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
-    <div id="videoWrapper">
-        <video id="videoElement" autoplay muted loop>
-            <source type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-    </div>
-    <audio id="audioElement" src="media/brains.mp3" preload="auto" loop></audio>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const videoElement = document.getElementById('videoElement');
-            const videoWrapper = document.getElementById('videoWrapper');
-            const audioElement = document.getElementById('audioElement');
-            let tapCount = 0;
-            let tapTimer;
-            let lastTouchDistance = null;
-            let scale = 1;
-            let startY = null;
+<div id="videoWrapper">
+    <video id="videoElement" autoplay muted loop>
+        <source type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+</div>
+<audio id="audioElement" src="media/brains.mp3" preload="auto" loop></audio>
 
-            const swipeThreshold = 50; // px for swipe detection
+<div id="a2hsPopup" style="display:none;">
+    <button id="closePopup">&times;</button>
+    <p>To install this app, tap <strong>Share</strong> then <strong>Add to Home Screen</strong>.</p>
+</div>
 
-            const videoSources = [
-                'media/1.mp4',
-                'media/2.mp4',
-                'media/3.mp4',
-                'media/4.mp4',
-                'media/5.mp4',
-                'media/6.mp4',
-                'media/7.mp4'
-            ];
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const videoElement = document.getElementById('videoElement');
+        const videoWrapper = document.getElementById('videoWrapper');
+        const audioElement = document.getElementById('audioElement');
 
-            function changeVideo() {
-                const currentSource = videoElement.getAttribute('src');
-                let newSourceIndex = videoSources.indexOf(currentSource) + 1;
-                if (newSourceIndex >= videoSources.length) newSourceIndex = 0;
+        let tapCount = 0;
+        let tapTimer;
+        let lastTouchDistance = null;
+        let scale = 1;
+        let startY = null;
+        const swipeThreshold = 50;
 
-                videoElement.setAttribute('src', videoSources[newSourceIndex]);
-                videoElement.load();
+        const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+        const isStandalone = window.navigator.standalone === true;
 
-                if (newSourceIndex === videoSources.length - 1) {
-                    videoElement.muted = false;
-                    audioElement.play();
-                } else {
-                    videoElement.muted = false;
-                    audioElement.pause();
-                }
+        // Show Add-to-Home-Screen popup if iOS and not standalone
+        if (isIos && !isStandalone) {
+            const popup = document.getElementById('a2hsPopup');
+            popup.style.display = 'block';
+
+            // Dragging logic
+            let offsetX, offsetY, dragging = false;
+            popup.addEventListener('touchstart', e => {
+                const touch = e.touches[0];
+                offsetX = touch.clientX - popup.offsetLeft;
+                offsetY = touch.clientY - popup.offsetTop;
+                dragging = true;
+            });
+
+            popup.addEventListener('touchmove', e => {
+                if (!dragging) return;
+                const touch = e.touches[0];
+                popup.style.left = (touch.clientX - offsetX) + 'px';
+                popup.style.top = (touch.clientY - offsetY) + 'px';
+            });
+
+            popup.addEventListener('touchend', e => {
+                dragging = false;
+            });
+
+            document.getElementById('closePopup').addEventListener('click', () => {
+                popup.style.display = 'none';
+            });
+        }
+
+        const videoSources = [
+            'media/1.mp4', 'media/2.mp4', 'media/3.mp4', 'media/4.mp4', 'media/5.mp4', 'media/6.mp4', 'media/7.mp4'
+        ];
+
+        function changeVideo() {
+            const currentSource = videoElement.getAttribute('src');
+            let newSourceIndex = videoSources.indexOf(currentSource) + 1;
+            if (newSourceIndex >= videoSources.length) newSourceIndex = 0;
+
+            videoElement.setAttribute('src', videoSources[newSourceIndex]);
+            videoElement.load();
+
+            if (newSourceIndex === videoSources.length - 1) {
+                videoElement.muted = false;
+                audioElement.play();
+            } else {
+                videoElement.muted = false;
+                audioElement.pause();
             }
+        }
 
-            // Touch start
-            videoWrapper.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 2) {
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    lastTouchDistance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-                }
-                if (e.touches.length === 1) {
-                    startY = e.touches[0].clientY;
-                }
-            });
-
-            // Pinch to zoom
-            videoWrapper.addEventListener('touchmove', (e) => {
-                if (e.touches.length === 2) {
-                    e.preventDefault();
-                    const touch1 = e.touches[0];
-                    const touch2 = e.touches[1];
-                    const distance = Math.hypot(touch2.clientX - touch1.clientX, touch2.clientY - touch1.clientY);
-
-                    if (lastTouchDistance) {
-                        const delta = distance / lastTouchDistance;
-                        scale *= delta;
-                        scale = Math.min(Math.max(scale, 1), 5);
-                        videoElement.style.transform = `scale(${scale})`;
-                    }
-                    lastTouchDistance = distance;
-                }
-            });
-
-            // Touch end
-            videoWrapper.addEventListener('touchend', (e) => {
-                if (e.touches.length < 2) lastTouchDistance = null;
-
-                // Single-finger gestures
-                if (e.changedTouches.length === 1 && e.touches.length === 0) {
-                    const touch = e.changedTouches[0];
-
-                    // Swipe up for fullscreen
-                    if (startY !== null && startY - touch.clientY > swipeThreshold) {
-                        if (videoElement.requestFullscreen) videoElement.requestFullscreen();
-                        else if (videoElement.webkitRequestFullscreen) videoElement.webkitRequestFullscreen();
-                        else if (videoElement.msRequestFullscreen) videoElement.msRequestFullscreen();
-                        startY = null;
-                        return; // don't count as tap if swipe triggered
-                    }
-
-                    // Double-tap for video change
-                    tapCount++;
-                    if (tapCount === 1) {
-                        tapTimer = setTimeout(() => tapCount = 0, 400);
-                    } else if (tapCount === 2) {
-                        clearTimeout(tapTimer);
-                        tapCount = 0;
-                        changeVideo();
-                    }
-                    startY = null;
-                }
-            });
+        videoWrapper.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                const t1 = e.touches[0], t2 = e.touches[1];
+                lastTouchDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+            }
+            if (e.touches.length === 1) startY = e.touches[0].clientY;
         });
-    </script>
+
+        videoWrapper.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const t1 = e.touches[0], t2 = e.touches[1];
+                const distance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                if (lastTouchDistance) {
+                    const delta = distance / lastTouchDistance;
+                    scale *= delta;
+                    scale = Math.min(Math.max(scale, 1), 5);
+                    videoElement.style.transform = `scale(${scale})`;
+                }
+                lastTouchDistance = distance;
+            }
+        });
+
+        videoWrapper.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) lastTouchDistance = null;
+            if (e.changedTouches.length === 1 && e.touches.length === 0) {
+                const touch = e.changedTouches[0];
+
+                // Swipe up for fullscreen only if NOT standalone
+                if (!isStandalone && startY !== null && startY - touch.clientY > swipeThreshold) {
+                    if (videoElement.requestFullscreen) videoElement.requestFullscreen();
+                    else if (videoElement.webkitRequestFullscreen) videoElement.webkitRequestFullscreen();
+                    else if (videoElement.msRequestFullscreen) videoElement.msRequestFullscreen();
+                    startY = null;
+                    return;
+                }
+
+                // Double-tap to change video
+                tapCount++;
+                if (tapCount === 1) {
+                    tapTimer = setTimeout(() => tapCount = 0, 400);
+                } else if (tapCount === 2) {
+                    clearTimeout(tapTimer);
+                    tapCount = 0;
+                    changeVideo();
+                }
+                startY = null;
+            }
+        });
+    });
+</script>
+
 </body>
 </html>
